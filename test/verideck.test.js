@@ -397,3 +397,44 @@ test('founder questions: contradicted first, then weakest by stakes; skips handl
   states[id('hiring')].sources = [{ url: 'https://jobs.acme.test' }];
   assert.ok(!founderQuestions(claims, states).some((q) => q.claimId === id('hiring')), 'claims the user sourced are skipped');
 });
+
+test('recommendation: thresholds, contradiction rules, precedence', async () => {
+  const { recommendation } = await import('../lib/recommendation.js');
+  const slides = parseText('# Acme\nWe raised $10M from Sequoia.\nFounded by Jane Doe, ex-Stripe.\nWe are a team of 50 engineers.\nWe are hiring 20 engineers.\nFounded in 2019.');
+  const claims = extractClaims(slides).filter((c, i, all) => all.findIndex((x) => x.category === c.category) === i);
+  const id = (cat) => claims.find((c) => c.category === cat).id;
+  const set = (verdicts) => Object.fromEntries(claims.map((c) => [c.id, { verification: { verdict: verdicts[c.category] ?? 'verified', reason: 'r', sources: [] } }]));
+
+  assert.equal(recommendation(claims, {}), null, 'no badge before verification');
+
+  let r = recommendation(claims, set({}));
+  assert.equal(r.decision, 'take');
+  assert.match(r.reason, /no claim contradicted/);
+
+  r = recommendation(claims, set({ funding: 'contradicted' }));
+  assert.equal(r.decision, 'dig', 'contradicted funding blocks "Take the meeting"');
+  assert.match(r.reason, /funding claim was contradicted/);
+
+  r = recommendation(claims, set({ founder_background: 'contradicted' }));
+  assert.equal(r.decision, 'dig');
+  assert.match(r.reason, /founder claim was contradicted/);
+
+  r = recommendation(claims, set({ hiring: 'contradicted', founded: 'contradicted' }));
+  assert.equal(r.decision, 'pass', '2+ contradictions');
+  assert.match(r.reason, /^2 claims contradicted/);
+
+  r = recommendation(claims, set({ funding: 'unverifiable', founder_background: 'unverifiable', headcount: 'unverifiable', hiring: 'unverifiable' }));
+  assert.ok(r.score < 40);
+  assert.equal(r.decision, 'pass');
+  assert.match(r.reason, /below 40/);
+
+  r = recommendation(claims, set({ funding: 'partially_verified', headcount: 'unverifiable', hiring: 'unverifiable' }));
+  assert.ok(r.score >= 40 && r.score < 75, `score ${r.score}`);
+  assert.equal(r.decision, 'dig');
+  assert.match(r.reason, /between 40 and 74/);
+
+  // A contradiction the user backed with their own source doesn't count.
+  const states = set({ hiring: 'contradicted', founded: 'contradicted' });
+  states[id('hiring')].sources = [{ url: 'https://jobs.acme.test' }];
+  assert.notEqual(recommendation(claims, states).decision, 'pass');
+});

@@ -231,3 +231,9 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0
 .q-src { display: block; font-size: 0.8rem; color: var(--muted); }
 .q-src a { color: var(--brand); }
 .questions.none { border-left-color: var(--ok); }
+.reco { border-radius: var(--radius); padding: 12px 18px; border: 1px solid var(--line); background: var(--panel); box-shadow: var(--shadow); border-left: 6px solid var(--line); }
+.reco-label { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.01em; }
+.reco-reason { margin-top: 2px; font-size: 0.92rem; color: var(--muted); }
+.reco-take { border-left-color: var(--ok); } .reco-take .reco-label { color: var(--ok); }
+.reco-dig { border-left-color: var(--medium); } .reco-dig .reco-label { color: var(--medium); }
+.reco-pass { border-left-color: var(--bad); } .reco-pass .reco-label { color: var(--bad); }

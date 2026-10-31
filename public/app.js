@@ -1,5 +1,6 @@
 import { deckScore } from '/shared/score.js';
 import { founderQuestions } from '/shared/questions.js';
+import { recommendation } from '/shared/recommendation.js';
 
 const $ = (sel) => document.querySelector(sel);
 const STORE = 'verideck:';
@@ -417,6 +418,15 @@ function claimVisible(c) {
 
 const VERDICT_WORD = { contradicted: 'contradicted', partially_verified: 'partly verified', unverifiable: 'unverifiable' };
 
+function recommendationBadge() {
+  const r = recommendation(allClaims(), deck.states);
+  if (!r) return '';
+  return `<section class="reco reco-${r.decision}">
+    <div class="reco-label">${esc(r.label)}</div>
+    <div class="reco-reason">${esc(r.reason)}</div>
+  </section>`;
+}
+
 function questionsPanel() {
   const qs = founderQuestions(allClaims(), deck.states);
   if (!qs.length) {
@@ -478,6 +488,7 @@ function renderSlides() {
     .join('');
 
   $('#slides').innerHTML =
+    recommendationBadge() +
     questionsPanel() +
     (filtering && !shown
       ? `<div class="empty-state">No claims match these filters (${claims.length} claims in this deck).<br><br><button class="btn" data-action="show-all">Show all claims</button></div>`
@@ -629,6 +640,8 @@ function markdownReport() {
     `**Credibility score: ${s.score}/100 (grade ${s.grade}).** ${s.counts.verified} verified, ${s.counts.partially_verified} partly verified, ${s.counts.contradicted} contradicted, ${s.counts.unverifiable} unverifiable, ${s.counts.unchecked} not checked.`,
     '',
   ];
+  const reco = recommendation(allClaims(), deck.states);
+  if (reco) lines.push(`## Recommendation: ${reco.label}`, '', reco.reason, '');
   const qs = founderQuestions(allClaims(), deck.states);
   if (!qs.length && allClaims().some((c) => deck.states[c.id]?.verification)) {
     lines.push('## Questions to ask the founder', '', 'None: Crustdata contradicted nothing, and every claim was verified or backed by your own source.', '');
