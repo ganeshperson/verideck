@@ -230,3 +230,4 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0
 .questions .badge { margin-right: 4px; }
 .q-src { display: block; font-size: 0.8rem; color: var(--muted); }
 .q-src a { color: var(--brand); }
+.questions.none { border-left-color: var(--ok); }

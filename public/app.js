@@ -419,7 +419,12 @@ const VERDICT_WORD = { contradicted: 'contradicted', partially_verified: 'partly
 
 function questionsPanel() {
   const qs = founderQuestions(allClaims(), deck.states);
-  if (!qs.length) return '';
+  if (!qs.length) {
+    const checked = allClaims().some((c) => deck.states[c.id]?.verification);
+    return checked
+      ? `<section class="questions none"><h2>Questions to ask the founder</h2><p class="q-basis">None: Crustdata contradicted nothing, and every claim was verified or backed by your own source.</p></section>`
+      : '';
+  }
   const n = qs.filter((q) => q.verdict === 'contradicted').length;
   const items = qs
     .map((q) => {
@@ -625,6 +630,9 @@ function markdownReport() {
     '',
   ];
   const qs = founderQuestions(allClaims(), deck.states);
+  if (!qs.length && allClaims().some((c) => deck.states[c.id]?.verification)) {
+    lines.push('## Questions to ask the founder', '', 'None: Crustdata contradicted nothing, and every claim was verified or backed by your own source.', '');
+  }
   if (qs.length) {
     lines.push(`## ${qs.length} question${qs.length > 1 ? 's' : ''} to ask the founder`, '');
     qs.forEach((q, i) => {
