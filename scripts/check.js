@@ -8,6 +8,7 @@ import { readFileSync } from 'node:fs';
 import { parsePptx, parseText } from '../lib/pptx.js';
 import { checkPitch } from '../lib/verify.js';
 import { deckScore } from '../lib/score.js';
+import { founderQuestions } from '../lib/questions.js';
 
 const args = process.argv.slice(2);
 const json = args.includes('--json');
@@ -31,7 +32,7 @@ const states = Object.fromEntries(Object.entries(out.results).map(([id, v]) => [
 const summary = deckScore(out.claims, states);
 
 if (json) {
-  console.log(JSON.stringify({ ...out, summary, claims: out.claims.map((c) => ({ ...c, verification: out.results[c.id] })) }, null, 2));
+  console.log(JSON.stringify({ ...out, summary, founder_questions: founderQuestions(out.claims, states), claims: out.claims.map((c) => ({ ...c, verification: out.results[c.id] })) }, null, 2));
   process.exit(0);
 }
 
@@ -42,6 +43,11 @@ if (r?.why?.length) console.log(`  why: ${r.why.join('; ')}`);
 console.log(`Extractor: ${out.extractor} · Judge: ${out.model} · ${out.claims.length} claims`);
 console.log(`Score: ${summary.score}/100 · ${summary.counts.verified} verified, ${summary.counts.partially_verified} partly, ${summary.counts.contradicted} contradicted, ${summary.counts.unverifiable} unverifiable`);
 for (const w of out.warnings) console.log(`⚠️  ${w}`);
+const qs = founderQuestions(out.claims, states);
+if (qs.length) {
+  console.log(`\n${qs.length} question${qs.length > 1 ? 's' : ''} to ask the founder:`);
+  qs.forEach((q, i) => console.log(`  ${i + 1}. ${q.question}\n     (slide ${q.slide} · ${q.verdict}${q.source ? ` · ${q.source.label}${q.source.url ? ` ${q.source.url}` : ''}` : ''})`));
+}
 for (const c of out.claims) {
   const v = out.results[c.id];
   console.log(`\n${ICON[v.verdict] ?? '?'} [slide ${c.slide} · ${c.category}] ${c.text}`);

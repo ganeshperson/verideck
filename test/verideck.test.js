@@ -374,3 +374,26 @@ test('Gemini falls back to the next model when one is overloaded', async () => {
     delete process.env.GEMINI_API_KEY;
   }
 });
+
+test('founder questions: contradicted first, then weakest by stakes; skips handled claims', async () => {
+  const { founderQuestions } = await import('../lib/questions.js');
+  const slides = parseText('# Acme\nWe are a team of 50 engineers.\nWe raised $10M from Sequoia.\nFounded in 2019.\nWe are hiring 20 engineers.');
+  const claims = extractClaims(slides);
+  const id = (cat) => claims.find((c) => c.category === cat).id;
+  const src = [{ label: 'Headcount', endpoint: 'POST /company/enrich', url: 'https://x.test' }];
+  const states = {
+    [id('headcount')]: { verification: { verdict: 'contradicted', reason: 'Only 12 people.', crustdata_value: 'headcount.total = 12', sources: src } },
+    [id('funding')]: { verification: { verdict: 'unverifiable', reason: 'No funding data.', crustdata_value: '', sources: src } },
+    [id('founded')]: { verification: { verdict: 'verified', reason: 'ok', crustdata_value: '2019', sources: src } },
+    [id('hiring')]: { verification: { verdict: 'contradicted', reason: '2 openings.', crustdata_value: 'openings_count = 2', sources: src } },
+  };
+  const qs = founderQuestions(claims, states);
+  assert.equal(qs.length, 3);
+  assert.deepEqual(qs.map((q) => q.verdict), ['contradicted', 'contradicted', 'unverifiable']);
+  assert.match(qs[0].question, /but Crustdata shows/);
+  assert.ok(qs.every((q) => q.source?.endpoint));
+  assert.ok(!qs.some((q) => q.claimId === id('founded')), 'verified claims are not questioned');
+
+  states[id('hiring')].sources = [{ url: 'https://jobs.acme.test' }];
+  assert.ok(!founderQuestions(claims, states).some((q) => q.claimId === id('hiring')), 'claims the user sourced are skipped');
+});

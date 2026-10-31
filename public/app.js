@@ -1,4 +1,5 @@
 import { deckScore } from '/shared/score.js';
+import { founderQuestions } from '/shared/questions.js';
 
 const $ = (sel) => document.querySelector(sel);
 const STORE = 'verideck:';
@@ -414,6 +415,25 @@ function claimVisible(c) {
   return true;
 }
 
+const VERDICT_WORD = { contradicted: 'contradicted', partially_verified: 'partly verified', unverifiable: 'unverifiable' };
+
+function questionsPanel() {
+  const qs = founderQuestions(allClaims(), deck.states);
+  if (!qs.length) return '';
+  const n = qs.filter((q) => q.verdict === 'contradicted').length;
+  const items = qs
+    .map((q) => {
+      const src = q.source ? ` <span class="q-src">Source: ${safeUrl(q.source.url) ? `<a href="${esc(q.source.url)}" target="_blank" rel="noopener">${esc(q.source.label)}</a>` : esc(q.source.label)} (Crustdata <code>${esc(q.source.endpoint)}</code>)</span>` : '';
+      return `<li><span class="badge ${q.verdict === 'contradicted' ? 'bad' : q.verdict === 'partially_verified' ? 'medium' : ''}">Slide ${q.slide} · ${VERDICT_WORD[q.verdict]}</span> ${esc(q.question)}${src}</li>`;
+    })
+    .join('');
+  return `<section class="questions">
+    <h2>${qs.length} question${qs.length > 1 ? 's' : ''} to ask the founder</h2>
+    <p class="q-basis">${n ? `Based on ${n} contradicted claim${n > 1 ? 's' : ''}` : 'Nothing was contradicted; based on'}${qs.length > n ? `${n ? ', then the' : ' the'} weakest remaining claims` : ''}.</p>
+    <ol>${items}</ol>
+  </section>`;
+}
+
 function renderSlides() {
   const claims = allClaims();
   const filtering = filters.level !== 'all' || filters.status !== 'all';
@@ -453,9 +473,10 @@ function renderSlides() {
     .join('');
 
   $('#slides').innerHTML =
-    filtering && !shown
+    questionsPanel() +
+    (filtering && !shown
       ? `<div class="empty-state">No claims match these filters (${claims.length} claims in this deck).<br><br><button class="btn" data-action="show-all">Show all claims</button></div>`
-      : html;
+      : html);
 }
 
 function render() {
@@ -603,6 +624,15 @@ function markdownReport() {
     `**Credibility score: ${s.score}/100 (grade ${s.grade}).** ${s.counts.verified} verified, ${s.counts.partially_verified} partly verified, ${s.counts.contradicted} contradicted, ${s.counts.unverifiable} unverifiable, ${s.counts.unchecked} not checked.`,
     '',
   ];
+  const qs = founderQuestions(allClaims(), deck.states);
+  if (qs.length) {
+    lines.push(`## ${qs.length} question${qs.length > 1 ? 's' : ''} to ask the founder`, '');
+    qs.forEach((q, i) => {
+      lines.push(`${i + 1}. ${q.question}`);
+      lines.push(`   - Slide ${q.slide} · ${VERDICT_WORD[q.verdict]}${q.source ? ` · Source: ${q.source.label} (Crustdata ${q.source.endpoint})${q.source.url ? ` ${q.source.url}` : ''}` : ''}`);
+    });
+    lines.push('');
+  }
   if (snap) {
     lines.push('## Crustdata company snapshot', '');
     for (const [k, v] of Object.entries(snap)) lines.push(`- ${k.replace(/_/g, ' ')}: ${Array.isArray(v) ? v.join(', ') : v}`);

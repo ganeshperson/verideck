@@ -223,3 +223,10 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0
 .steps li.done { color: var(--ok); }
 .steps li.now { color: var(--ink); font-weight: 700; }
 .step-msg { margin-top: 10px; font-size: 0.88rem; color: var(--muted); font-weight: 400; max-width: 420px; }
+.questions { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--bad); border-radius: var(--radius); padding: 14px 18px; box-shadow: var(--shadow); }
+.questions h2 { margin: 0 0 2px; font-size: 1.05rem; }
+.q-basis { margin: 0 0 8px; color: var(--muted); font-size: 0.85rem; }
+.questions ol { margin: 0; padding-left: 20px; display: grid; gap: 10px; line-height: 1.5; }
+.questions .badge { margin-right: 4px; }
+.q-src { display: block; font-size: 0.8rem; color: var(--muted); }
+.q-src a { color: var(--brand); }
