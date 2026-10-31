@@ -1,0 +1,13 @@
+{
+  "name": "verideck",
+  "version": "1.0.0",
+  "description": "Verify startup pitch deck claims against Crustdata, with Gemini verdicts.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/"
+  },
+  "engines": { "node": ">=20.12" },
+  "license": "MIT"
+}

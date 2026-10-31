@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VeriDeck: verify startup pitch claims</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" id="home">
+      <img src="/favicon.svg" alt="" width="26" height="26" />
+      <span>Veri<b>Deck</b></span>
+    </a>
+    <div class="topbar-actions" id="deckActions" hidden>
+      <button class="btn ghost" id="newDeck">New deck</button>
+      <button class="btn ghost" id="exportJson">Export JSON</button>
+      <button class="btn" id="exportMd">Export report</button>
+    </div>
+  </header>
+
+  <!-- Upload / paste screen -->
+  <main id="intake" class="intake">
+    <section class="hero">
+      <h1>Verify a startup pitch against real data.</h1>
+      <p>VeriDeck pulls the company and founder claims out of a pitch deck (headcount, funding, founding year,
+        founders’ past jobs, hiring) and checks each one against Crustdata. Every verdict comes with a reason and a source.</p>
+      <p class="keys" id="keyStatus"></p>
+    </section>
+
+    <section class="intake-grid">
+      <label class="dropzone" id="dropzone" tabindex="0">
+        <input type="file" id="fileInput" accept=".pptx,.md,.markdown,.txt" hidden />
+        <svg viewBox="0 0 24 24" width="40" height="40" aria-hidden="true"><path fill="currentColor" d="M19 13v6H5v-6H3v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6h-2Zm-8-9.6V16h2V3.4l3.3 3.3 1.4-1.4L12 .6 6.3 6.3l1.4 1.4L11 3.4Z"/></svg>
+        <strong>Drop a .pptx to verify it</strong>
+        <span>or click to browse. Markdown and .txt work too.</span>
+        <small>Keynote or Google Slides? Export to .pptx first.</small>
+      </label>
+
+      <div class="paste">
+        <div class="paste-head">
+          <strong>Or paste your pitch</strong>
+          <span class="hint">One click: extracts claims, finds the company, verifies everything. <code>---</code> between slides is optional.</span>
+        </div>
+        <textarea id="pasteInput" spellcheck="false" placeholder="Zepto delivers groceries in 10 minutes. Founded in 2021 in Mumbai by Aadit Palicha and Kaivalya Vohra…"></textarea>
+        <div class="paste-actions">
+          <button class="btn ghost" id="loadSample">Try a sample pitch</button>
+          <button class="btn" id="analyzePaste">Verify pitch</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="recent" id="recent" hidden>
+      <h2>Recent decks</h2>
+      <ul id="recentList"></ul>
+    </section>
+  </main>
+
+  <!-- Results screen -->
+  <main id="results" class="results" hidden>
+    <aside class="sidebar">
+      <div class="score-card">
+        <div class="ring" id="ring">
+          <svg viewBox="0 0 120 120"><circle class="track" cx="60" cy="60" r="52" /><circle class="bar" id="ringBar" cx="60" cy="60" r="52" /></svg>
+          <div class="ring-label"><span id="scoreNum">0</span><small>Verifiability</small></div>
+        </div>
+        <div class="deck-name" id="deckName"></div>
+        <div class="grade" id="grade"></div>
+      </div>
+
+      <dl class="stats" id="stats"></dl>
+
+      <div class="company-box" id="companyBox"></div>
+
+      <div class="warn-box" id="warnBox" hidden></div>
+
+      <div class="filters">
+        <h3>Show</h3>
+        <div class="chips" id="levelFilter">
+          <button data-v="all" class="chip on">All</button>
+          <button data-v="high" class="chip">High risk</button>
+          <button data-v="medium" class="chip">Medium</button>
+          <button data-v="low" class="chip">Low</button>
+        </div>
+        <div class="chips" id="statusFilter">
+          <button data-v="all" class="chip on">Any verdict</button>
+          <button data-v="contradicted" class="chip">Contradicted</button>
+          <button data-v="partially_verified" class="chip">Partly verified</button>
+          <button data-v="verified" class="chip">Verified</button>
+          <button data-v="unverifiable" class="chip">Unverifiable</button>
+          <button data-v="unchecked" class="chip">Not checked</button>
+        </div>
+        <label class="toggle"><input type="checkbox" id="showText" /> Show all slide text</label>
+        <label class="toggle"><input type="checkbox" id="showDismissed" /> Show dismissed</label>
+      </div>
+    </aside>
+
+    <section class="slides" id="slides"></section>
+  </main>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+  <div class="loading" id="loading" hidden><div class="spinner"></div><span id="loadingText">Analyzing…</span></div>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
