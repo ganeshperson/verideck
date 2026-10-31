@@ -1,6 +1,6 @@
 import './lib/env.js';
 import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parsePptx, parseText } from './lib/pptx.js';
@@ -13,6 +13,19 @@ import { extractWithGemini, extractHeuristic, verifyClaims, checkPitch, resolveC
 const ROOT = fileURLToPath(new URL('.', import.meta.url));
 const PORT = Number(process.env.PORT) || 3000;
 const MAX_BODY = 50 * 1024 * 1024;
+const LAST_RUN = join(ROOT, 'data', 'last-good-run.json');
+
+// A run is worth replaying if it verified something.
+async function saveLastGoodRun(payload) {
+  const verdicts = Object.values(payload.results ?? {});
+  if (!verdicts.length || verdicts.every((v) => v.verdict === 'unverifiable')) return;
+  try {
+    await mkdir(join(ROOT, 'data'), { recursive: true });
+    await writeFile(LAST_RUN, JSON.stringify({ ...payload, savedAt: new Date().toISOString() }));
+  } catch (err) {
+    console.error('Could not save last good run:', err.message);
+  }
+}
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -108,6 +121,15 @@ async function handleApi(req, res, path) {
     });
   }
 
+  // Replay the last good run: no Crustdata or Gemini calls.
+  if (path === '/api/replay' && req.method === 'GET') {
+    try {
+      return send(res, 200, { ...JSON.parse(await readFile(LAST_RUN, 'utf8')), replay: true });
+    } catch {
+      return send(res, 404, { error: 'No saved run yet. Verify a pitch once, then Replay demo will work offline.' });
+    }
+  }
+
   if (path === '/api/analyze' && req.method === 'POST') {
     const { slides, name } = await readDeck(req);
     if (!slides.length) return send(res, 422, { error: 'No slide text found.' });
@@ -138,7 +160,9 @@ async function handleApi(req, res, path) {
     try {
       const out = await checkPitch(slides, { company, onProgress: (p) => emit({ type: 'progress', ...p }) });
       const states = Object.fromEntries(Object.entries(out.results).map(([id, v]) => [id, { verification: v }]));
-      finish({ deck: { name, slides: addSentences(slides) }, ...out, summary: deckScore(out.claims, states) });
+      const payload = { deck: { name, slides: addSentences(slides) }, ...out, summary: deckScore(out.claims, states) };
+      await saveLastGoodRun(payload);
+      finish(payload);
     } catch (err) {
       console.error(err);
       if (!stream) throw err;

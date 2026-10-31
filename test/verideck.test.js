@@ -326,6 +326,16 @@ test('HTTP API: analyze, verify guard, static files', async () => {
     assert.deepEqual(check.results, {});
     assert.ok(check.warnings.some((w) => /Not verified: add CRUSTDATA_API_KEY and GEMINI_API_KEY/.test(w)));
 
+    const replay = await fetch(`${base}/api/replay`);
+    if (replay.status === 200) {
+      const r = await replay.json();
+      assert.equal(r.replay, true);
+      assert.ok(r.claims.length && Object.keys(r.results).length, 'saved run has claims and verdicts');
+    } else {
+      assert.equal(replay.status, 404);
+      assert.match((await replay.json()).error, /No saved run yet/);
+    }
+
     const bad = await fetch(`${base}/api/analyze`, { method: 'POST', headers: { 'x-filename': 'deck.key' }, body: 'x' });
     assert.equal(bad.status, 415);
 

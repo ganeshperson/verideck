@@ -149,7 +149,9 @@ function openDeck(result) {
     resolution: result.resolution ?? null,
     founders: result.founders ?? [],
     snapshot: result.snapshot ?? null,
-    warnings: result.warnings ?? [],
+    warnings: result.replay
+      ? [`Replay of the run from ${new Date(result.savedAt).toLocaleString()}. No API calls were made; data is as of that run.`, ...(result.warnings ?? [])]
+      : result.warnings ?? [],
   };
   resetFilters();
   save();
@@ -692,6 +694,14 @@ $('#recentList').addEventListener('click', (e) => {
   if (!saved) return toast('That deck is no longer saved.', true);
   deck = saved;
   showResults();
+});
+$('#replayDemo').addEventListener('click', async () => {
+  try {
+    openDeck(await api('/api/replay'));
+    toast('Replayed the last good run instantly (no API calls).');
+  } catch (err) {
+    toast(err.message, true);
+  }
 });
 $('#newDeck').addEventListener('click', showIntake);
 $('#home').addEventListener('click', (e) => (e.preventDefault(), showIntake()));
