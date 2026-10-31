@@ -17,6 +17,7 @@ Needs Node 20.12+ and has no dependencies to install.
 ```sh
 cp .env.example .env      # add CRUSTDATA_API_KEY and GEMINI_API_KEY
 npm start                 # open http://localhost:3000
+npm test                  # run the test suite
 ```
 
 | Variable | Used for |
@@ -25,47 +26,63 @@ npm start                 # open http://localhost:3000
 | `GEMINI_API_KEY` | Claim extraction and verdicts |
 | `GEMINI_MODEL` | Optional. Pins one model; by default VeriDeck picks the newest Flash model your key can use and falls back when it's overloaded |
 
-Three ways to use it, none of which needs a human step after the first click:
+Without keys the app still opens decks and finds claims by pattern matching, but it can't verify them.
+
+## Ways to use it
+
+None of these needs a human step after the first click.
 
 - **Web app:** paste a pitch (or drop a `.pptx`, `.md`, or `.txt`) and click **Verify pitch**. A progress list
-  shows each stage. **▶ Replay demo** reopens the last good run instantly with no API calls; a sample run is
-  committed in `data/last-good-run.json`, so it works on a fresh clone.
+  shows each stage, and the company name and domain are filled in automatically. Results show every claim
+  with its verdict, reason, and sources, a Crustdata snapshot of the company, a credibility score, and the
+  questions to ask the founder. You can filter by verdict, flag sentences extraction missed, dismiss
+  non-claims, attach your own sources, correct the company and re-verify, and export a Markdown report or JSON.
+- **▶ Replay demo:** reopens the last good run instantly with no API calls. Each successful run is saved to
+  `data/last-good-run.json`; a sample run is committed, so Replay works on a fresh clone.
 - **API:** `curl -s localhost:3000/api/check -H 'content-type: application/json' -d '{"text":"<pitch>"}'`
   returns claims, verdicts, reasons, sources, and the company snapshot as JSON. Send
   `accept: application/x-ndjson` to stream progress events instead.
-- **CLI:** `node scripts/check.js samples/zepto.md` prints every claim with its verdict, reason, and evidence.
-  Add `--json` for machine output or `--domain=example.com` to pin the company.
+- **CLI:** `node scripts/check.js samples/zepto.md` prints every claim with its verdict, reason, and evidence,
+  plus the founder questions. Add `--json` for machine output or `--domain=example.com` to pin the company.
 
-Run the tests with `npm test`.
+## How a check works
 
-Without keys the app still opens decks and finds claims by pattern matching, but it can't verify them.
+1. **Extract.** Gemini splits the pitch into atomic claims, one fact each, and keeps the slide sentence each
+   came from. "Founded in 2021 in Mumbai by A and B" becomes separate claims for the year, the HQ, and each
+   founder. Gemini also returns the company name, domain, HQ city, and founders. Pattern matching then adds
+   back any claim Gemini missed. If Gemini is unavailable, pattern matching runs on its own.
+2. **Resolve the company.** Crustdata Identify lists every company with that name. VeriDeck scores the
+   candidates against the pitch (a matching domain, founded year, and team size), and when the top ones are
+   close, checks their HQ and whether the named founders work there. It records which company it picked,
+   why, and the alternatives.
+3. **Gather evidence.** Crustdata Enrich returns the company record. In parallel, People Search fetches the
+   founders' employment histories and education, and Crustdata web search covers claims the datasets don't,
+   such as product facts and customers.
+4. **Judge.** Gemini compares each claim with that evidence only, never its own knowledge, and returns a
+   verdict, a reason quoting the numbers, the deciding Crustdata value, and the IDs of the evidence it used.
+   Contradicted requires evidence that actually conflicts; silent evidence means unverifiable.
+5. **Re-check.** Claims still unverifiable or partly verified get a Crustdata web search, and every unsettled
+   claim is judged again with the new evidence.
+6. **Enforce sourcing.** Each cited evidence ID becomes a source: the Crustdata endpoint, when it was
+   retrieved, how fresh the data is, and a link (company website, profile, Crunchbase, or web page). A verdict
+   that cites no evidence is downgraded to unverifiable, and an unverifiable claim cites the lookup that came
+   back empty, so every verdict has a source.
 
 ## Architecture
 
 ```
- pitch (.pptx / text)
-        │
-        ▼
- 1. Extract   Gemini splits the pitch into atomic claims, one fact each, with the slide
-              sentence it came from; pattern matching adds back anything Gemini missed
-        │
-        ▼
- 2. Resolve   Crustdata Identify lists every company with that name; VeriDeck scores them
-              against the pitch (domain, founded year, team size, then HQ and founder names)
-        │
-        ▼
- 3. Evidence  Crustdata Enrich (company record) ─┬─ People Search (founders' histories)
-                                                └─ Web Search (product facts, customers)
-        │
-        ▼
- 4. Judge     Gemini compares each claim with the evidence only, never its own knowledge
-        │
-        ▼
- 5. Re-check  claims still unsettled get a Crustdata web search and are judged again
-        │
-        ▼
- 6. Enforce   every verdict must cite evidence; a verdict without evidence is downgraded
-              to unverifiable, and an unverifiable claim cites the lookup that came back empty
+  Web app / CLI / curl
+          │
+          ▼
+  server.js ── /api/check (streams progress), /api/verify, /api/analyze, /api/replay
+          │
+          ▼
+  lib/verify.js  extract → resolve → evidence → judge → re-check → enforce
+       │                    │                         │
+       ▼                    ▼                         ▼
+  lib/claims.js      lib/crustdata.js           lib/gemini.js
+  (patterns,         (Identify, Enrich,         (JSON-schema output,
+   merging)           People Search, Web)        model fallback)
 ```
 
 | File | Role |
@@ -81,6 +98,8 @@ Without keys the app still opens decks and finds claims by pattern matching, but
 | `public/` | The web app (vanilla JS, no build step) |
 | `scripts/check.js` | Command-line checker |
 | `samples/` | Test pitches: `zepto.md` (true claims) and `sample.md` / `sample.pptx` (Retool, with planted false claims) |
+| `data/last-good-run.json` | The saved run that Replay demo opens |
+| `test/` | Automated tests (`npm test`); Crustdata and Gemini calls are mocked |
 
 ## Crustdata endpoints used
 
