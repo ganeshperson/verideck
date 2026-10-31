@@ -53,6 +53,10 @@ by pattern matching, but it can't verify them.
 
 ## In the app
 
+- **▶ Replay demo** replays the last good run instantly with no API calls (saved in `data/last-good-run.json`;
+  a sample run is committed so it works on a fresh clone).
+- **Questions to ask the founder** appear at the top of the results and the exported report: up to 3, built
+  from contradicted claims first, each citing the Crustdata value and source.
 - Upload `.pptx` (slides plus speaker notes), `.md`, or `.txt` (slides separated by `---`).
 - See the Crustdata company snapshot, a credibility score, and the verdict, reason, and sources for
   each claim (expand "Crustdata data" to see the raw fields behind a verdict).
